@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple AI Assistant</title>
+</head>
+<body>
+    <h1>Ask Me Anything</h1>
+
+    <form id="queryForm">
+        <input type="text" id="textInput" placeholder="Type your message..." style="width: 300px;">
+        <button type="submit">Send</button>
+        <button type="button" onclick="startDictation()">Speak Here</button>
+    </form>
+
+    <h2>Conversation</h2>
+    <div id="chatBox">
+        <!-- New chats will be injected here -->
+    </div>
+
+    <audio id="ttsPlayer" hidden></audio>
+    <button id="playTTSBtn" style="display:none;">Listen</button>
+
+    <script>
+        const form = document.getElementById("queryForm");
+        const chatBox = document.getElementById("chatBox");
+        const ttsPlayer = document.getElementById("ttsPlayer");
+        const playTTSBtn = document.getElementById("playTTSBtn");
+
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const textInput = document.getElementById("textInput");
+            const text = textInput.value.trim();
+            if (!text) return;
+
+            addMessage("You", text);
+            addMessage("Assistant", "Thinking...");
+
+            textInput.value = "";
+
+            const res = await fetch("/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            });
+
+            const data = await res.json();
+            updateLastAssistantMessage(data.response);
+
+            // Fetch TTS audio
+            const ttsRes = await fetch("/tts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: data.response })
+            });
+
+            if (ttsRes.ok) {
+                const blob = await ttsRes.blob();
+                const url = URL.createObjectURL(blob);
+                ttsPlayer.src = url;
+                ttsPlayer.hidden = false;
+                playTTSBtn.style.display = "inline";
+            }
+        });
+
+        playTTSBtn.addEventListener("click", () => {
+            ttsPlayer.play();
+        });
+
+        function addMessage(sender, text) {
+            const p = document.createElement("p");
+            p.innerHTML = "<b>" + sender + ":</b> <span>" + text + "</span>";
+            chatBox.appendChild(p);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function updateLastAssistantMessage(text) {
+            const messages = chatBox.querySelectorAll("p");
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.textContent.startsWith("Assistant:")) {
+                lastMsg.querySelector("span").textContent = text;
+            }
+        }
+
+        function startDictation() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const spokenText = event.results[0][0].transcript;
+                document.getElementById("textInput").value = spokenText;
+            };
+
+            recognition.onerror = function(event) {
+                alert("Error in recognition: " + event.error);
+            };
+        }
+
+        function addAssistantMessageWithTTS(text, audioUrl) {
+            const p = document.createElement("p");
+            const messageSpan = document.createElement("span");
+            messageSpan.textContent = text;
+
+            const label = document.createElement("b");
+            label.textContent = "Assistant: ";
+
+            const listenBtn = document.createElement("button");
+            listenBtn.textContent = "🔊 Listen";
+            listenBtn.style.marginLeft = "10px";
+
+            const audio = new Audio(audioUrl);
+            listenBtn.onclick = () => audio.play();
+
+            p.appendChild(label);
+            p.appendChild(messageSpan);
+            p.appendChild(listenBtn);
+            chatBox.appendChild(p);
+
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+    </script>
+</body>
+</html>
