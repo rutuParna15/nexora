@@ -1,125 +1,488 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Simple AI Assistant</title>
-</head>
-<body>
-    <h1>Ask Me Anything</h1>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexora</title>
+    <style>
+      :root {
+        --primary-color: #3b82f6;
+        --background-start: #0c0c0c;
+        --background-end: #1e293b;
+        --card-background: #1f2937;
+        --text-color: #e2e8f0;
+        --input-background: #2d3748;
+        --border-color: #475569;
+        --hover-color: #5b687f;
+      }
 
-    <form id="queryForm">
-        <input type="text" id="textInput" placeholder="Type your message..." style="width: 300px;">
-        <button type="submit">Send</button>
-        <button type="button" onclick="startDictation()">Speak Here</button>
-    </form>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    <h2>Conversation</h2>
-    <div id="chatBox">
-        <!-- New chats will be injected here -->
+      html {
+        height: 100%;
+        overflow-x: hidden;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
+        background-attachment: fixed;
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+      }
+
+      /* Custom page-level scrollbar */
+      body::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      body::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.4);
+        border-radius: 3px;
+        transition: all 0.3s ease;
+      }
+
+      body::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.6);
+      }
+
+      body {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+      }
+
+      .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border-color);
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        transition: background-color 0.2s ease;
+      }
+
+      .header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .main-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: 768px;
+        margin: 0 auto;
+        width: 100%;
+        padding: 0 24px;
+        margin-top: 80px; /* Account for fixed header */
+        min-height: calc(100vh - 80px);
+      }
+
+      .messages-section {
+        flex: 1;
+        padding: 24px 0;
+        min-height: calc(100vh - 200px); /* Ensure minimum height */
+      }
+
+      .welcome-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 60vh;
+        text-align: center;
+      }
+
+      .welcome-screen h2 {
+        font-size: 2.5em;
+        margin-bottom: 16px;
+        color: var(--primary-color);
+        font-weight: 300;
+      }
+
+      .welcome-screen p {
+        font-size: 1.2em;
+        color: #94a3b8;
+        margin-bottom: 32px;
+      }
+
+      .message {
+        display: flex;
+        gap: 12px;
+        max-width: 100%;
+        margin-bottom: 24px;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .message.user {
+        flex-direction: row-reverse;
+      }
+
+      .message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .user .message-avatar {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .assistant .message-avatar {
+        background: var(--input-background);
+        color: var(--primary-color);
+      }
+
+      .message-content {
+        background: var(--card-background);
+        padding: 12px 16px;
+        border-radius: 18px;
+        max-width: 70%;
+        word-wrap: break-word;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease-in-out;
+        line-height: 1.5;
+      }
+
+      .message-content:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .user .message-content {
+        background: var(--primary-color);
+        color: white;
+      }
+
+      .assistant .message-content {
+        background: var(--card-background);
+      }
+
+      .input-section {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 24px;
+        border-top: 1px solid var(--border-color);
+        background: rgba(15, 23, 42, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+
+      .input-section .input-container {
+        max-width: 768px;
+        margin: 0 auto;
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        background: var(--input-background);
+        border-radius: 24px;
+        padding: 12px 16px;
+        gap: 12px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      #messageInput {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text-color);
+        font-size: 16px;
+        outline: none;
+        resize: none;
+        min-height: 24px;
+        max-height: 120px;
+        line-height: 24px;
+        padding: 0;
+        font-family: inherit;
+      }
+
+      #messageInput::placeholder {
+        color: #94a3b8;
+      }
+
+      .voice-controls {
+        display: flex;
+        gap: 8px;
+      }
+
+      .voice-btn {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.2s;
+        text-decoration: none;
+      }
+
+      .voice-btn:hover {
+        color: var(--text-color);
+      }
+
+      .send-btn {
+        background: var(--primary-color);
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        opacity: 0.5;
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
+      }
+
+      .send-btn:hover:not(:disabled) {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      .send-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      /* Add padding at the bottom to prevent content from being hidden behind fixed input */
+      .spacer {
+        height: 120px;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .header {
+          padding: 12px 16px;
+        }
+        .main-container {
+          padding: 0 16px;
+          margin-top: 70px; /* Smaller header on mobile */
+        }
+        
+        .input-section {
+          padding: 16px;
+        }
+        
+        .message-content {
+          max-width: 85%;
+        }
+        
+        body::-webkit-scrollbar {
+          width: 3px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="logo">
+        <h1>Nexora</h1>
+      </div>
+    </header>
+
+    <div class="main-container">
+      <div class="messages-section" id="messagesSection">
+        <div class="welcome-screen" id="welcomeScreen">
+          <h2>Welcome to Nexora</h2>
+          <p>Your AI assistant is ready to help. Ask me anything!</p>
+        </div>
+      </div>
+
+      <div class="input-section">
+        <div class="input-container">
+          <textarea
+            id="messageInput"
+            placeholder="Ask anything..."
+            rows="1"
+          ></textarea>
+
+          <div class="voice-controls">
+            <a href="/voice" class="voice-btn">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"
+                />
+              </svg>
+            </a>
+          </div>
+
+          <button class="send-btn" id="sendBtn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <audio id="ttsPlayer" hidden></audio>
-    <button id="playTTSBtn" style="display:none;">Listen</button>
+    <div class="spacer"></div>
 
     <script>
-        const form = document.getElementById("queryForm");
-        const chatBox = document.getElementById("chatBox");
-        const ttsPlayer = document.getElementById("ttsPlayer");
-        const playTTSBtn = document.getElementById("playTTSBtn");
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messagesSection = document.getElementById('messagesSection');
+    const welcomeScreen = document.getElementById('welcomeScreen');
 
-        form.addEventListener("submit", async function(e) {
+    // Auto-resize textarea
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        sendBtn.disabled = !this.value.trim();
+        sendBtn.style.opacity = this.value.trim() ? '1' : '0.5';
+    });
+
+    // Send on Enter (without Shift)
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
+            sendMessage();
+        }
+    });
 
-            const textInput = document.getElementById("textInput");
-            const text = textInput.value.trim();
-            if (!text) return;
+    // Send on click
+    sendBtn.addEventListener('click', sendMessage);
 
-            addMessage("You", text);
-            addMessage("Assistant", "Thinking...");
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
 
-            textInput.value = "";
+        // Hide welcome screen on first message
+        if (!welcomeScreen.classList.contains('hidden')) {
+            welcomeScreen.classList.add('hidden');
+        }
 
+        // Add user message
+        addMessage(message, 'user');
+
+        // Add a "thinking..." message from the assistant
+        const assistantThinkingMsg = addMessage("Thinking...", 'assistant');
+
+        // Clear input and reset
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+
+        try {
+            // Send the text query to the backend
             const res = await fetch("/query", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text })
+                body: JSON.stringify({ text: message })
             });
+
+            if (!res.ok) throw new Error("Failed to get response from the backend.");
 
             const data = await res.json();
-            updateLastAssistantMessage(data.response);
+            const llmResponse = data.response;
 
-            // Fetch TTS audio
-            const ttsRes = await fetch("/tts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: data.response })
+            // Update the "thinking..." message with the actual response
+            updateLastAssistantMessage(llmResponse, assistantThinkingMsg);
+        } catch (error) {
+            console.error("Error fetching AI response:", error);
+            updateLastAssistantMessage("Sorry, I am unable to respond right now. Please try again later.", assistantThinkingMsg);
+        }
+    }
+
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = sender === 'user' ? 'U' : 'AI';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.textContent = text;
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+
+        messagesSection.appendChild(messageDiv);
+        return messageDiv;
+    }
+
+    function updateLastAssistantMessage(newText, messageElement) {
+        if (messageElement && messageElement.classList.contains('assistant')) {
+            const contentSpan = messageElement.querySelector('.message-content');
+            if (contentSpan) {
+                contentSpan.textContent = newText;
+            }
+        }
+    }
+
+    // Focus input on load
+    window.addEventListener('load', () => {
+        messageInput.focus();
+    });
+
+    // Handle window resize to maintain scroll position
+    window.addEventListener('resize', () => {
+        // Keep scroll at bottom if user was at bottom
+        if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50) {
+            requestAnimationFrame(() => {
+                window.scrollTo(0, document.documentElement.scrollHeight);
             });
-
-            if (ttsRes.ok) {
-                const blob = await ttsRes.blob();
-                const url = URL.createObjectURL(blob);
-                ttsPlayer.src = url;
-                ttsPlayer.hidden = false;
-                playTTSBtn.style.display = "inline";
-            }
-        });
-
-        playTTSBtn.addEventListener("click", () => {
-            ttsPlayer.play();
-        });
-
-        function addMessage(sender, text) {
-            const p = document.createElement("p");
-            p.innerHTML = "<b>" + sender + ":</b> <span>" + text + "</span>";
-            chatBox.appendChild(p);
-            window.scrollTo(0, document.body.scrollHeight);
         }
-
-        function updateLastAssistantMessage(text) {
-            const messages = chatBox.querySelectorAll("p");
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg && lastMsg.textContent.startsWith("Assistant:")) {
-                lastMsg.querySelector("span").textContent = text;
-            }
-        }
-
-        function startDictation() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            recognition.start();
-
-            recognition.onresult = function(event) {
-                const spokenText = event.results[0][0].transcript;
-                document.getElementById("textInput").value = spokenText;
-            };
-
-            recognition.onerror = function(event) {
-                alert("Error in recognition: " + event.error);
-            };
-        }
-
-        function addAssistantMessageWithTTS(text, audioUrl) {
-            const p = document.createElement("p");
-            const messageSpan = document.createElement("span");
-            messageSpan.textContent = text;
-
-            const label = document.createElement("b");
-            label.textContent = "Assistant: ";
-
-            const listenBtn = document.createElement("button");
-            listenBtn.textContent = "🔊 Listen";
-            listenBtn.style.marginLeft = "10px";
-
-            const audio = new Audio(audioUrl);
-            listenBtn.onclick = () => audio.play();
-
-            p.appendChild(label);
-            p.appendChild(messageSpan);
-            p.appendChild(listenBtn);
-            chatBox.appendChild(p);
-
-            window.scrollTo(0, document.body.scrollHeight);
-        }
-
-    </script>
-</body>
+    });
+</script>
+  </body>
 </html>

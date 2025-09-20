@@ -4,7 +4,7 @@ views = Blueprint('views', __name__)
 
 @views.route('/', methods=['GET', 'POST'])
 def home():
-    return render_template('home.html')
+    return render_template('index.html')
 
 @views.route('/query', methods=['GET', 'POST'])
 def chat():
@@ -12,6 +12,10 @@ def chat():
         return handle_query()
     else:
         return render_template('index.html')
+
+@views.route('/voice', methods=['GET'])
+def voice_page():
+    return render_template('voice.html')
 
 @views.route('/tts', methods=['POST'])
 def tts_route():
